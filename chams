@@ -1,0 +1,45 @@
+local UserInputService = game:GetService("UserInputService")
+local Player = game.Players.LocalPlayer
+local PlayerGui = Player.PlayerGui
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = PlayerGui
+screenGui.Name = "ToggleGui"
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0, 200, 0, 50)
+button.Position = UDim2.new(0.5, -100, 0.5, -25)
+button.Text = "Toggle GUI"
+button.Parent = screenGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red background
+frame.Visible = false  -- Start off as hidden
+frame.Parent = screenGui
+
+local guiVisible = false
+
+local function toggleGui()
+    guiVisible = not guiVisible
+    frame.Visible = guiVisible
+end
+
+button.MouseButton1Click:Connect(function()
+    toggleGui()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
+        toggleGui()
+    end
+end)
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if guiVisible then
+    end
+end)
+
