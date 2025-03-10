@@ -1,45 +1,131 @@
-local UserInputService = game:GetService("UserInputService")
-local Player = game.Players.LocalPlayer
-local PlayerGui = Player.PlayerGui
+local CoreGui = game:FindService("CoreGui")
+local Players = game:FindService("Players")
+local UserInputService = game:FindService("UserInputService")
+local lp = Players.LocalPlayer
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = PlayerGui
-screenGui.Name = "ToggleGui"
+local FillColor = Color3.fromRGB(175, 25, 255)
+local DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+local FillTransparency = 0.5
+local OutlineColor = Color3.fromRGB(255, 255, 255)
+local OutlineTransparency = 0
 
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0, 200, 0, 50)
-button.Position = UDim2.new(0.5, -100, 0.5, -25)
-button.Text = "Toggle GUI"
-button.Parent = screenGui
+local Storage = Instance.new("Folder")
+Storage.Parent = CoreGui
+Storage.Name = "Highlight_Storage"
+local connections = {}
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0.5, -150, 0.5, -100)
-frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red background
-frame.Visible = false  -- Start off as hidden
-frame.Parent = screenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = CoreGui
+ScreenGui.Name = "ESP_GUI"
+ScreenGui.ResetOnSpawn = false
 
-local guiVisible = false
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 150, 0, 50)
+Frame.Position = UDim2.new(0.5, -75, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Frame.BorderSizePixel = 0
+Frame.Parent = ScreenGui
 
-local function toggleGui()
-    guiVisible = not guiVisible
-    frame.Visible = guiVisible
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = Frame
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+ToggleButton.Position = UDim2.new(0, 10, 0.5, -10)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+ToggleButton.Text = ""
+ToggleButton.Parent = Frame
+
+local ToggleUICorner = Instance.new("UICorner")
+ToggleUICorner.CornerRadius = UDim.new(0, 10)
+ToggleUICorner.Parent = ToggleButton
+
+local Label = Instance.new("TextLabel")
+Label.Size = UDim2.new(0, 80, 0, 20)
+Label.Position = UDim2.new(0, 60, 0.5, -10)
+Label.BackgroundTransparency = 1
+Label.Text = "ESP: OFF"
+Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+Label.TextScaled = true
+Label.Parent = Frame
+
+local ESPEnabled = false
+local GUIVisible = true
+
+local function Highlight(plr)
+    if plr == lp or (plr.Team and lp.Team and plr.Team == lp.Team) then return end
+    
+    local Highlight = Instance.new("Highlight")
+    Highlight.Name = plr.Name
+    Highlight.FillColor = FillColor
+    Highlight.DepthMode = DepthMode
+    Highlight.FillTransparency = FillTransparency
+    Highlight.OutlineColor = OutlineColor
+    Highlight.OutlineTransparency = OutlineTransparency
+    Highlight.Parent = Storage
+    
+    local plrchar = plr.Character
+    if plrchar then
+        Highlight.Adornee = plrchar
+    end
+
+    connections[plr] = plr.CharacterAdded:Connect(function(char)
+        if ESPEnabled then
+            Highlight.Adornee = char
+        else
+            Highlight.Adornee = nil
+        end
+    end)
 end
 
-button.MouseButton1Click:Connect(function()
-    toggleGui()
+local function ToggleESP(state)
+    ESPEnabled = state
+    Label.Text = "ESP: " .. (state and "ON" or "OFF")
+    ToggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
+    ToggleButton.Position = state and UDim2.new(0, 100, 0.5, -10) or UDim2.new(0, 10, 0.5, -10)
+    
+    for _, plr in next, Players:GetPlayers() do
+        if plr ~= lp and (not plr.Team or not lp.Team or plr.Team ~= lp.Team) then
+            local highlight = Storage:FindFirstChild(plr.Name)
+            if highlight then
+                highlight.Adornee = state and plr.Character or nil
+            elseif state then
+                Highlight(plr)
+            end
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    if ESPEnabled then Highlight(plr) end
 end)
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
+for _, v in next, Players:GetPlayers() do
+    if ESPEnabled then Highlight(v) end
+end
 
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.RightControl then
-        toggleGui()
+Players.PlayerRemoving:Connect(function(plr)
+    local plrname = plr.Name
+    if Storage[plrname] then
+        Storage[plrname]:Destroy()
+    end
+    if connections[plr] then
+        connections[plr]:Disconnect()
     end
 end)
 
-game:GetService("RunService").Heartbeat:Connect(function()
-    if guiVisible then
-    end
+ToggleButton.MouseButton1Click:Connect(function()
+    ToggleESP(not ESPEnabled)
 end)
 
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftControl then
+        UserInputService.InputBegan:Connect(function(input2)
+            if input2.KeyCode == Enum.KeyCode.LeftAlt then
+                GUIVisible = not GUIVisible
+                ScreenGui.Enabled = GUIVisible
+            end
+        end)
+    end
+end)
